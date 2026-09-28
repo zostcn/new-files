@@ -3,6 +3,28 @@
 > 由 `zost-cli create` 生成(模板:`zostcn/cli` 仓库的 `template/`)。
 > 下面的命令、规矩与已知的坑对本项目同样适用。
 
+## 项目说明
+
+**本项目 = 旧 `files`(v1 前端)的 1:1 迁移**(2026-09-29),对接 v2 后端的
+`module/file`(`/api/file`,由 v1 的 `/api/backup*` 改名而来;接口客户端
+`orval` 按 tag `auth,file` 生成)。旧仓 `zostcn/files` 继续服务 v1,不再加功能。
+
+与模板的**三处项目级差异**(都有注释/测试锁着):
+
+1. **顶栏整层移除**——文件区自己的 HomeToolbar + UserMenu(回收站/退出)就是全部 UI 入口;
+   模板的 devices/settings 页已删,要恢复从 cli 模板拷回(路由处留了路标注释)。
+   高度契约:`DefaultLayout` 的 `h-screen overflow-hidden` 是 `.fm height:100%` 的解析前提,
+   `DefaultLayout.spec` 有反向锁。
+2. **`src/api/backup.ts` 是 v1→v2 兼容层**:保留旧导出名与参数形状(`pageNum/pageSize`),
+   底层换生成的 v2 客户端;分页解析 `records`→`items`;类型 `Backup` = `FileNodeVO` 别名。
+   multipart 与超时特殊路径手写(模板 `customInstance` 不透传 `timeout`,走 `http.post`)。
+3. **`deploy/nginx.conf` 的 CSP 给 OSS 域放行三条通道**(connect=直传 XHR、media=音视频预览、
+   frame=PDF iframe)——少一条浏览器就 `blocked:csp`(实测)。换桶要同步改这里与
+   `OssProperties.urlPrefix`。
+
+线上(测试机):`http://43.153.213.190/new-files/`,账号 `15519931195`(admin)。
+未搬的尾巴:`/api/common` 4 个端点旧前端从未调用(见 api 仓 CLAUDE.md 当前状态)。
+
 ## 跑起来
 
 ```bash
@@ -86,6 +108,7 @@ cookie 发不出去(`SameSite=Lax`,浏览器规则),换 **v2 Bearer 令牌通道
 | 颜色 / 主题                            | `src/theme/tokens.css`(6 个语义 token,清空了默认调色板)                                                              |
 | 守卫四步                               | `src/router/guard.ts`(顺序即正确性,注释写明调错会怎样)                                                               |
 | 部署流水线                             | `.github/workflows/deploy.yml`(env 块集中改:服务器 / 保留数)                                                        |
+| v1→v2 接口适配(旧导出名/参数形状)      | `src/api/backup.ts`(分页 records→items、超时与 multipart 手写)                                                  |
 | 站点 conf(CSP/回退/反代)              | `deploy/nginx.conf`(测试机形态,生成即可推)/ `deploy/nginx.conf.example`(生产形态参照)                              |
 | 接口生成范围                           | `orval.config.ts` 的 `filters.tags`(模块 tag = 按需生成粒度)                                                         |
 
@@ -117,5 +140,10 @@ push `main` 即自动:测试 → 构建(显式 `VITE_API_BASE_URL=服务器IP`,B
   注入前解析的旧 `name`(如 catch-all)带过去,新路由白注入。
 - **catch-all 路由不能标 `meta.public`**:注入前守卫目标都先被它解析掉,
   守卫在「公开页」一步就放行,永远走不到注入那步。
+- **CSP 必须给 OSS 域放行三条 directive**(connect/media/frame):v1 老站不发 CSP 所以
+  直传/预览无感,v2 的 B10 头会让浏览器 `blocked:csp`(2026-09-29 实测)。
+- **模板 `customInstance` 的入参类型不透传 `timeout`**:需要放宽超时的请求(JSON 的
+  保存/commit)必须走 `http.post(url, data, { timeout })` 再手动取 `r.data`
+  (FormData 不用管 —— 拦截器会置成无超时)。
 - `npm install` 不带 `.npmrc` 的 `legacy-peer-deps=true` 会撞 npm 10.8.2 的
   arborist 崩溃(`edgesOut`);`ajv` 必须是显式依赖(顶层会被别的包提升成 v6)。
