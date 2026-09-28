@@ -1,10 +1,8 @@
 import DefaultLayout from "@/layouts/DefaultLayout.vue";
-import DevicesPage from "@/pages/DevicesPage.vue";
 import FilesPage from "@/pages/files/index.vue";
 import LoginPage from "@/pages/LoginPage.vue";
 import NotFoundPage from "@/pages/NotFoundPage.vue";
 import RegisterPage from "@/pages/RegisterPage.vue";
-import SettingsPage from "@/pages/SettingsPage.vue";
 import type { RouteRecordRaw } from "vue-router";
 
 declare module "vue-router" {
@@ -73,21 +71,8 @@ export const guardedRoutes: RouteRecordRaw[] = [
         component: FilesPage,
         meta: { roles: ["admin"] },
       },
-      // 信任设备管理(§1.12)。**不写 meta.roles = 登录即可** ——
-      // 与后端「未入册路径登录即可」的授权语义一致。
-      {
-        path: "devices",
-        name: "devices",
-        component: DevicesPage,
-        meta: { title: "信任设备" },
-      },
-      // 账号安全(改密码)。同样登录即可;与 devices 一起构成「账号安全」落点。
-      {
-        path: "settings",
-        name: "settings",
-        component: SettingsPage,
-        meta: { title: "账号安全" },
-      },
+      // 模板的「信任设备 / 账号安全」页已按需求移除(2026-09-29):本项目是文件管理工具,
+      // 账号相关的入口暂时只要登录;要恢复时从 cli 模板拷回页面 + 这里的路由即可。
     ],
   },
 ];
